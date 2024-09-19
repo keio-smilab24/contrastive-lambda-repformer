@@ -1,0 +1,6 @@
+data/*
+checkpoints/
+wandb/
+*.png
+.python-version
+__pycache__

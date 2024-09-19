@@ -1,0 +1,9 @@
+git+https://github.com/openai/CLIP.git
+wandb
+matplotlib
+transformers==4.35.2
+seaborn
+loralib
+h5py
+openai
+torch==2.0.1
