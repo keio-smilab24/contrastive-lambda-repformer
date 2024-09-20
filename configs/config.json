@@ -4,6 +4,6 @@
     "max_epoch": 150,
     "patience": 50,
     "data_path": "data",
-    "dataset_name": "RT-1",
+    "dataset_name": "SP-RT-1",
     "seed": false
 }

@@ -9,7 +9,7 @@ from src.model import LambdaRepformer
 from utils.data_loader import CustomDataset
 from utils.utils import torch_fix_seed, load_checkpoint, plot_confusion_matrices
 
-def test_model(model, test_loader, device, dataset_name="RT-1"):
+def test_model(model, test_loader, device, dataset_name="SP-RT-1"):
     task_metrics = { 'correct': {}, 'total': {}, 'TP': {}, 'FP': {}, 'FN': {} }
     task_name = dataset_name
     resfile = f"res/{dataset_name}_results_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
@@ -83,7 +83,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = LambdaRepformer().to(device)
 
-    test_set = CustomDataset(f"{config['data_path']}/{config['dataset_name']}/images/test")
+    test_set = CustomDataset(f"{config['data_path']}/{config['dataset_name']}/test")
     # test_set = CustomDataset(f"{config['data_path']}/{config['dataset_name']}/hsr_data")
     test_loader = DataLoader(test_set, batch_size=config["batch_size"], shuffle=False)
 

@@ -7,3 +7,4 @@ loralib
 h5py
 openai
 torch==2.0.1
+torchinfo

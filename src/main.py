@@ -28,7 +28,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Prepare datasets
-    data_path = f"{config['data_path']}/{config['dataset_name']}/images"
+    data_path = f"{config['data_path']}/{config['dataset_name']}"
     train_set = CustomDataset(f"{data_path}/train")
     valid_set = CustomDataset(f"{data_path}/valid")
     test_set = CustomDataset(f"{data_path}/test")

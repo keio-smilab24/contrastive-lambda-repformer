@@ -39,10 +39,10 @@ class CustomDataset(Dataset):
             print("Config file not found. Using default settings.")
 
     def load_data(self):
-        if self.dataset_name == "RT-1":
-            self.load_data_for_rt1()
-        elif self.dataset_name == "HSR":
-            self.load_data_for_hsr()
+        if self.dataset_name == "SP-RT-1":
+            self.load_data_for_sprt1()
+        elif self.dataset_name == "SP-HSR":
+            self.load_data_for_sphsr()
 
     def create_or_open_hdf5(self, file_path):
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -88,12 +88,12 @@ class CustomDataset(Dataset):
         return len(self.data)
 
     def load_or_compute_embedding(self, group_path, compute_embedding, hdf5_file):
-        if f"data/RT-1/images/instructblip_embeddings/" in group_path:
+        if f"data/SP-RT-1/instructblip_embeddings/" in group_path:
             data_0 = np.load(f"{group_path}_0.npz")["embeddings"]
             data_1 = np.load(f"{group_path}_1.npz")["embeddings"]
             stacked_data = np.concatenate([data_0, data_1])
             return torch.tensor(stacked_data)
-        elif f"data/HSR/instructblip_embeddings/" in group_path:
+        elif f"data/SP-HSR/instructblip_embeddings/" in group_path:
             data_0 = np.load(f"{group_path}_0.npz")["embeddings"]
             data_1 = np.load(f"{group_path}_1.npz")["embeddings"]
             stacked_data = np.concatenate([data_0, data_1])
@@ -141,7 +141,7 @@ class CustomDataset(Dataset):
 
         return torch.cat(embeddings, dim=0)
 
-    def load_data_for_rt1(self):
+    def load_data_for_sprt1(self):
         with open(f"data/{self.dataset_name}/info.json") as f:
             json_file = json.load(f)
         episodes = sorted(os.listdir(f"{self.data_dir}"), key=lambda x: int(x[7:]))
@@ -168,7 +168,7 @@ class CustomDataset(Dataset):
                     hdf5_file)
 
                 vit_image = self.read_npz_file(
-                    f"{os.path.dirname(self.data_dir)}/image_embeddings",
+                    f"{os.path.dirname(self.data_dir)}/vit_embeddings",
                     f"{episode}"
                 )
 
@@ -178,12 +178,12 @@ class CustomDataset(Dataset):
                 )
 
                 bert_scene_narratives = self.load_or_compute_embedding(
-                    f"data/RT-1/images/instructblip_embeddings/emb_1/bert/{episode}",
+                    f"data/SP-RT-1/instructblip_embeddings/bert/{episode}",
                     None,
                     None)
 
                 ada_scene_narratives = self.load_or_compute_embedding(
-                    f"data/RT-1/images/instructblip_embeddings/emb_1/ada/{episode}",
+                    f"data/SP-RT-1/images/instructblip_embeddings/ada/{episode}",
                     None,
                     None)
 
@@ -212,7 +212,7 @@ class CustomDataset(Dataset):
                     "label": json_file[episode]["succeeded"]
                 })
 
-    def load_data_for_hsr(self):
+    def load_data_for_sphsr(self):
         with open(f"data/{self.dataset_name}/hsr_info.json") as f:
             json_file = json.load(f)
         # print(self.data_dir)
@@ -241,7 +241,7 @@ class CustomDataset(Dataset):
                     hdf5_file)
 
                 vit_image = self.read_npz_file(
-                    f"{os.path.dirname(self.data_dir)}/image_embeddings",
+                    f"{os.path.dirname(self.data_dir)}/vit_embeddings",
                     f"{episode}"
                 )
 
@@ -252,13 +252,13 @@ class CustomDataset(Dataset):
 
 
                 bert_scene_narratives = self.load_or_compute_embedding(
-                    f"data/HSR/instructblip_embeddings/emb_3/bert/{episode}",
+                    f"data/SP-HSR/instructblip_embeddings/bert/{episode}",
                     None,
                     None)
 
 
                 ada_scene_narratives = self.load_or_compute_embedding(
-                    f"data/HSR/instructblip_embeddings/emb_3/ada/{episode}",
+                    f"data/SP-HSR/instructblip_embeddings/ada/{episode}",
                     None,
                     None)
 
