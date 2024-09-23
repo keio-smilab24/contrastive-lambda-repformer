@@ -2,14 +2,17 @@ import openai
 import os
 import json
 from openai import OpenAI
+import time
 
 client = OpenAI()
 
 def get_gpt3_embeddings(text, model="text-embedding-3-large"):
+    time.sleep(1)
     if openai.api_key is None:
-        # export OPENAI_API_KEY=""
         openai.api_key = os.environ["OPENAI_API_KEY"]
     text = text.replace("\n", " ")
+    if text == "":
+        text = "empty"
     return client.embeddings.create(input = [text], model=model).data[0].embedding
 
 

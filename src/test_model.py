@@ -4,14 +4,16 @@ import json
 from torch.utils.data import DataLoader
 import time
 import datetime
+import os
 
-from src.model import LambdaRepformer
+from src.model import ContrastiveLambdaRepformer
 from utils.data_loader import CustomDataset
 from utils.utils import torch_fix_seed, load_checkpoint, plot_confusion_matrices
 
 def test_model(model, test_loader, device, dataset_name="SP-RT-1"):
     task_metrics = { 'correct': {}, 'total': {}, 'TP': {}, 'FP': {}, 'FN': {} }
     task_name = dataset_name
+    os.makedirs("res", exist_ok=True)
     resfile = f"res/{dataset_name}_results_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt"
     with open(resfile, 'a') as f:
         f.write(f"file_name, predicted, gt, confusion\n")
@@ -81,13 +83,15 @@ def main():
         torch_fix_seed(config["seed"])
     # torch_fix_seed(config["seed"])
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = LambdaRepformer().to(device)
+    model = ContrastiveLambdaRepformer().to(device)
 
-    test_set = CustomDataset(f"{config['data_path']}/{config['dataset_name']}/test")
-    # test_set = CustomDataset(f"{config['data_path']}/{config['dataset_name']}/hsr_data")
+    if config["dataset_name"] == "SP-RT-1":
+        test_set = CustomDataset(f"{config['data_path']}/{config['dataset_name']}/test")
+    elif config["dataset_name"] == "SP-HSR":
+        test_set = CustomDataset(f"{config['data_path']}/{config['dataset_name']}/hsr_data")
     test_loader = DataLoader(test_set, batch_size=config["batch_size"], shuffle=False)
 
-    checkpoint_path = "checkpoints/your/checkpoint/path.pth"
+    checkpoint_path = config["checkpoint_path"]
     load_checkpoint(model, checkpoint_path)
     start_time = time.time()
     test_acc = test_model(model, test_loader, device, dataset_name=config["dataset_name"])

@@ -18,7 +18,7 @@ class CustomDataset(Dataset):
         self.data_dir = data_dir
         self.data = []
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        # self.initialize_models()
+        self.initialize_models()
         self.load_config()
         self.load_data()
 
@@ -39,6 +39,7 @@ class CustomDataset(Dataset):
             print("Config file not found. Using default settings.")
 
     def load_data(self):
+        self.captions = None
         if self.dataset_name == "SP-RT-1":
             self.load_data_for_sprt1()
         elif self.dataset_name == "SP-HSR":
@@ -73,8 +74,6 @@ class CustomDataset(Dataset):
     def load_embedding_from_hdf5(self, hdf5_file, path):
         if path in hdf5_file:
             data = hdf5_file[path][...]
-            # if "scene_narrative/bert" in path:
-            #     print(data.shape)
             return torch.tensor(data)
         else:
             raise KeyError(f"Path {path} does not exist in the HDF5 file.")
@@ -88,12 +87,25 @@ class CustomDataset(Dataset):
         return len(self.data)
 
     def load_or_compute_embedding(self, group_path, compute_embedding, hdf5_file):
-        if f"data/SP-RT-1/instructblip_embeddings/" in group_path:
-            data_0 = np.load(f"{group_path}_0.npz")["embeddings"]
-            data_1 = np.load(f"{group_path}_1.npz")["embeddings"]
-            stacked_data = np.concatenate([data_0, data_1])
-            return torch.tensor(stacked_data)
-        elif f"data/SP-HSR/instructblip_embeddings/" in group_path:
+        if f"instructblip_embeddings/" in group_path:
+            for i in range(2):
+                if not os.path.exists(f"{group_path}_{i}.npz"):
+                    if self.dataset_name == "SP-RT-1":
+                        episode = "episode" + group_path.split("episode")[1].split(f"_{i}")[0]
+                    elif self.dataset_name == "SP-HSR":
+                        episode = "hsr_episode" + group_path.split("episode")[1].split(f"_{i}")[0]
+                    if self.captions is None:
+                        with open(f"data/{self.dataset_name}/instructblip_embeddings/captions.json") as captions_file:
+                            self.captions = json.load(captions_file)
+                    caption = self.captions[episode+f"/{i}"]
+                    if "bert" in group_path:
+                        emb = self.get_bert_emb(caption, max_length=128).cpu().numpy()
+                        output_dir = f"data/{self.dataset_name}/instructblip_embeddings/bert"
+                    elif "text_emb" in group_path:
+                        emb = torch.tensor(get_gpt3_embeddings(caption)).unsqueeze(0).cpu().numpy()
+                        output_dir = f"data/{self.dataset_name}/instructblip_embeddings/text_emb"
+                    os.makedirs(output_dir, exist_ok=True)
+                    np.savez(os.path.join(output_dir, f"{episode}_{i}.npz"), embeddings=emb)
             data_0 = np.load(f"{group_path}_0.npz")["embeddings"]
             data_1 = np.load(f"{group_path}_1.npz")["embeddings"]
             stacked_data = np.concatenate([data_0, data_1])
@@ -126,21 +138,6 @@ class CustomDataset(Dataset):
                 count_dict["False"] += 1
         return count_dict
 
-    def compute_scene_narratives(self, image_paths, root_key, model_type):
-        scene_narratives = []
-        for index in range(len(image_paths)):
-            key = f"{root_key}/{index}"
-            scene_narrative = get_scene_narrative_instruct_blip(key, f"data/{self.dataset_name}/instruct_blip.json")
-            scene_narratives.append(scene_narrative)
-
-        if model_type == 'bert':
-            embeddings = [self.get_bert_emb(narrative, max_length=128) for narrative in scene_narratives]
-        elif model_type == 'ada':
-            embeddings = [torch.tensor(get_gpt3_embeddings(narrative)).unsqueeze(0) for narrative in scene_narratives]
-            time.sleep(0.5)
-
-        return torch.cat(embeddings, dim=0)
-
     def load_data_for_sprt1(self):
         with open(f"data/{self.dataset_name}/info.json") as f:
             json_file = json.load(f)
@@ -159,7 +156,7 @@ class CustomDataset(Dataset):
 
                 clip_image = self.load_or_compute_embedding(
                     f"clip/clip1d/{episode}",
-                    lambda: self.process_episode_images(episode, image_paths),
+                    lambda: self.process_episode_images(image_paths),
                     hdf5_file)
 
                 clip2d = self.load_or_compute_embedding(
@@ -182,8 +179,8 @@ class CustomDataset(Dataset):
                     None,
                     None)
 
-                ada_scene_narratives = self.load_or_compute_embedding(
-                    f"data/SP-RT-1/images/instructblip_embeddings/ada/{episode}",
+                text_emb_scene_narratives = self.load_or_compute_embedding(
+                    f"data/SP-RT-1/instructblip_embeddings/text_emb/{episode}",
                     None,
                     None)
 
@@ -200,28 +197,26 @@ class CustomDataset(Dataset):
                     lambda: self.clip.encode_text(clip.tokenize(inst).to(self.device)).squeeze(0).float(),
                     hdf5_file)
 
-                ada_inst = self.load_or_compute_embedding(
-                    f"instruction/ada/{episode}",
-                    lambda: torch.tensor(get_gpt3_embeddings(str(inst))),
+                text_emb_inst = self.load_or_compute_embedding(
+                    f"instruction/text_emb/{episode}",
+                    lambda: torch.tensor(get_gpt3_embeddings(str(inst), model="text-embedding-ada-002")),
                     hdf5_file)
 
                 self.data.append({
-                    "images": {"clip2d_images": clip2d, "clip_images": clip_image, "vit_images": vit_image, "dinov2_images": dinov2_image, "bert_scene_narratives": bert_scene_narratives.to(self.device), "ada_scene_narratives": ada_scene_narratives.to(self.device)},
+                    "images": {"clip2d_images": clip2d, "clip_images": clip_image, "vit_images": vit_image, "dinov2_images": dinov2_image, "bert_scene_narratives": bert_scene_narratives.to(self.device), "text_emb_scene_narratives": text_emb_scene_narratives.to(self.device)},
                     "image_paths": image_paths,
-                    "texts": {"bert": bert_inst.to(self.device), "clip": clip_inst.to(self.device), "ada": ada_inst.to(self.device)},
+                    "texts": {"bert": bert_inst.to(self.device), "clip": clip_inst.to(self.device), "text_emb": text_emb_inst.to(self.device)},
                     "label": json_file[episode]["succeeded"]
                 })
 
     def load_data_for_sphsr(self):
         with open(f"data/{self.dataset_name}/hsr_info.json") as f:
             json_file = json.load(f)
-        # print(self.data_dir)
         episodes = sorted(os.listdir(f"{self.data_dir}"), key=lambda x: int(x[11:]))
         hdf5_file_path = f'data/{self.dataset_name}/embeddings.h5'
 
         with self.create_or_open_hdf5(hdf5_file_path) as hdf5_file:
             for episode in tqdm(episodes, total=len(episodes)):
-                print("episode", episode)
                 if episode not in json_file:
                     continue
 
@@ -232,7 +227,7 @@ class CustomDataset(Dataset):
 
                 clip_image = self.load_or_compute_embedding(
                     f"clip/clip1d/{episode}",
-                    lambda: self.process_episode_images(episode, image_paths),
+                    lambda: self.process_episode_images(image_paths),
                     hdf5_file)
 
                 clip2d = self.load_or_compute_embedding(
@@ -257,8 +252,8 @@ class CustomDataset(Dataset):
                     None)
 
 
-                ada_scene_narratives = self.load_or_compute_embedding(
-                    f"data/SP-HSR/instructblip_embeddings/ada/{episode}",
+                text_emb_scene_narratives = self.load_or_compute_embedding(
+                    f"data/SP-HSR/instructblip_embeddings/text_emb/{episode}",
                     None,
                     None)
 
@@ -275,15 +270,15 @@ class CustomDataset(Dataset):
                     lambda: self.clip.encode_text(clip.tokenize(inst).to(self.device)).squeeze(0).float(),
                     hdf5_file)
 
-                ada_inst = self.load_or_compute_embedding(
-                    f"instruction/ada/{episode}",
-                    lambda: torch.tensor(get_gpt3_embeddings(str(inst))),
+                text_emb_inst = self.load_or_compute_embedding(
+                    f"instruction/text_emb/{episode}",
+                    lambda: torch.tensor(get_gpt3_embeddings(str(inst), model="text-embedding-ada-002")),
                     hdf5_file)
 
                 self.data.append({
-                    "images": {"clip2d_images": clip2d, "clip_images": clip_image, "vit_images": vit_image, "dinov2_images": dinov2_image, "bert_scene_narratives": bert_scene_narratives.to(self.device), "ada_scene_narratives": ada_scene_narratives.to(self.device)},
+                    "images": {"clip2d_images": clip2d, "clip_images": clip_image, "vit_images": vit_image, "dinov2_images": dinov2_image, "bert_scene_narratives": bert_scene_narratives.to(self.device), "text_emb_scene_narratives": text_emb_scene_narratives.to(self.device)},
                     "image_paths": image_paths,
-                    "texts": {"bert": bert_inst.to(self.device), "clip": clip_inst.to(self.device), "ada": ada_inst.to(self.device)},
+                    "texts": {"bert": bert_inst.to(self.device), "clip": clip_inst.to(self.device), "text_emb": text_emb_inst.to(self.device)},
                     "label": json_file[episode]["succeeded"]
                 })
 

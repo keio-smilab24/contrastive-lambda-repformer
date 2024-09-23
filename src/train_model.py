@@ -9,7 +9,6 @@ def train_model(model, train_loader, optimizer, criterion, device, epoch):
     correct = 0
 
     for batch_idx, (images, texts, image_paths, target) in tqdm(enumerate(train_loader), total=len(train_loader), desc=f"Epoch {epoch}"):
-        # images, ada, target = images.to(device), ada.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(images, texts)
         _, predicted = torch.max(output, 1)

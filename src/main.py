@@ -7,7 +7,7 @@ import wandb
 from datetime import datetime
 from torchinfo import summary
 
-from model import LambdaRepformer
+from model import ContrastiveLambdaRepformer
 from utils.data_loader import CustomDataset, create_data_loaders
 from utils.utils import torch_fix_seed, create_checkpoint_dir, save_checkpoint, load_checkpoint
 from train_model import train_model
@@ -39,13 +39,13 @@ def main():
 
     # Initialize model and W&B
     run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    wandb.init(project="lambda_repformer", name=run_name)
-    model = LambdaRepformer().to(device)
+    wandb.init(project="contrastive_lambda_repformer", name=run_name)
+    model = ContrastiveLambdaRepformer().to(device)
     wandb.watch(model, log_freq=100)
 
     images = {
         "bert_scene_narratives": torch.randn(config["batch_size"], 2, 768),
-        "ada_scene_narratives": torch.randn(config["batch_size"], 2, 1536),
+        "text_emb_scene_narratives": torch.randn(config["batch_size"], 2, 3072),
         "clip_images": torch.randn(config["batch_size"], 2, 512),
         "clip2d_images": torch.randn(config["batch_size"], 2, 1024, 14, 14),
         "vit_images": torch.randn(config["batch_size"], 2, 768),
@@ -54,7 +54,7 @@ def main():
     texts = {
         "bert": torch.randn(config["batch_size"], 768),
         "clip": torch.randn(config["batch_size"], 512),
-        "ada": torch.randn(config["batch_size"], 1536)
+        "text_emb": torch.randn(config["batch_size"], 1536)
     }
     summary(model, input_data=(images, texts))
 

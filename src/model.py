@@ -8,9 +8,9 @@ import clip
 import torch.nn.functional as F
 import numpy as np
 
-class LambdaRepformer(nn.Module):
+class ContrastiveLambdaRepformer(nn.Module):
     def __init__(self):
-        super(LambdaRepformer, self).__init__()
+        super(ContrastiveLambdaRepformer, self).__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._init_transformer()
         self._init_cross_attention()
@@ -19,12 +19,12 @@ class LambdaRepformer(nn.Module):
 
     def _init_layers(self):
         self.bert_scene_narrative = nn.Linear(768, 512)
-        self.ada_scene_narrative = nn.Linear(1536, 512)
+        self.text_emb_scene_narrative = nn.Linear(3072, 512)
         self.clip_image_linear = nn.Linear(512, 512)
         self.bert_inst = nn.Linear(768, 512)
         self.vit_linear = nn.Linear(768, 512)
         self.dinov2_linear = nn.Linear(1024, 512)
-        self.ada_linear = nn.Linear(1536, 512)
+        self.text_emb_linear = nn.Linear(1536, 512)
         self.clip_inst = nn.Linear(512, 512)
         self.text_linear = nn.Linear(768+512, 512)
         self.fc1 = nn.Linear(512, 128)
@@ -58,13 +58,13 @@ class LambdaRepformer(nn.Module):
         )
 
     def forward(self, images, texts):
-        inst_bert, clip_inst, ada_inst = self._embed_instructions(texts)
-        bert_scene, ada_scene, clip2d_image, clip_image, vit_image, dinov2_image = self._embed_images(images)
+        inst_bert, clip_inst, text_emb_inst = self._embed_instructions(texts)
+        bert_scene, text_emb_scene, clip2d_image, clip_image, vit_image, dinov2_image = self._embed_images(images)
 
         bert_scene_0 = bert_scene[:, 0, :].unsqueeze(1)
         bert_scene_1 = bert_scene[:, 1, :].unsqueeze(1)
-        ada_scene_0 = ada_scene[:, 0, :].unsqueeze(1)
-        ada_scene_1 = ada_scene[:, 1, :].unsqueeze(1)
+        text_emb_scene_0 = text_emb_scene[:, 0, :].unsqueeze(1)
+        text_emb_scene_1 = text_emb_scene[:, 1, :].unsqueeze(1)
         clip2d_image_0 = clip2d_image[:, :196, :]
         clip2d_image_1 = clip2d_image[:, 196:, :]
         clip_image_0 = clip_image[:, 0, :].unsqueeze(1)
@@ -74,9 +74,9 @@ class LambdaRepformer(nn.Module):
         dinov2_image_0 = dinov2_image[:, 0, :].unsqueeze(1)
         dinov2_image_1 = dinov2_image[:, 1, :].unsqueeze(1)
 
-        text_features = torch.cat([clip_inst, ada_inst, inst_bert], dim=1)
-        lambda_features_0 = torch.cat([vit_image_0, dinov2_image_0, clip2d_image_0, clip_image_0, ada_scene_0, bert_scene_0], dim=1)
-        lambda_features_1 = torch.cat([vit_image_1, dinov2_image_1, clip2d_image_1, clip_image_1, ada_scene_1, bert_scene_1], dim=1)
+        text_features = torch.cat([clip_inst, text_emb_inst, inst_bert], dim=1)
+        lambda_features_0 = torch.cat([vit_image_0, dinov2_image_0, clip2d_image_0, clip_image_0, text_emb_scene_0, bert_scene_0], dim=1)
+        lambda_features_1 = torch.cat([vit_image_1, dinov2_image_1, clip2d_image_1, clip_image_1, text_emb_scene_1, bert_scene_1], dim=1)
         lambda_features = self.cross_attention(lambda_features_0, lambda_features_1)
         combined_features = self.transformer(text_features, lambda_features)
 
@@ -86,17 +86,17 @@ class LambdaRepformer(nn.Module):
     def _embed_instructions(self, texts):
         inst_bert = self._embed_single(texts["bert"], self.bert_inst, unsqueeze_dim=1)
         clip_inst = self._embed_single(texts["clip"], self.clip_inst, unsqueeze_dim=1)
-        ada_inst = self._embed_single(texts["ada"], self.ada_linear, unsqueeze_dim=1)
-        return inst_bert, clip_inst, ada_inst
+        text_emb_inst = self._embed_single(texts["text_emb"], self.text_emb_linear, unsqueeze_dim=1)
+        return inst_bert, clip_inst, text_emb_inst
 
     def _embed_images(self, images):
         bert_scene = self._embed_per_image(images["bert_scene_narratives"], self.bert_scene_narrative)
-        ada_scene = self._embed_per_image(images["ada_scene_narratives"], self.ada_scene_narrative)
+        text_emb_scene = self._embed_per_image(images["text_emb_scene_narratives"], self.text_emb_scene_narrative)
         clip_image = self._embed_per_image(images["clip_images"].to(self.device), self.clip_image_linear)
         clip2d_image = self._process_clip2d_images(images["clip2d_images"])
         vit_image = self._embed_per_image(images["vit_images"].to(self.device), self.vit_linear)
         dinov2_image = self._embed_per_image(images["dinov2_images"].to(self.device), self.dinov2_linear)
-        return bert_scene, ada_scene, clip2d_image, clip_image, vit_image, dinov2_image
+        return bert_scene, text_emb_scene, clip2d_image, clip_image, vit_image, dinov2_image
 
     def _embed_single(self, tensor, layer, unsqueeze_dim=None):
         tensor = tensor.to(self.device)
@@ -106,8 +106,6 @@ class LambdaRepformer(nn.Module):
 
     def _embed_per_image(self, tensor, layer):
         tensor = tensor.to(self.device).to(layer.weight.dtype)
-        # print(f"Tensor dtype: {tensor.dtype}")
-        # print(f"Layer weight dtype: {layer.weight.dtype}")
         return layer(tensor)
 
     def _process_clip2d_images(self, tensor):
