@@ -4,7 +4,7 @@
 - [Project Page](https://5ei74r0.github.io/contrastive-lambda-repformer.page/)
 - [arXiv](https://arxiv.org/abs/2410.00436)
 - [Dataset](https://contrastive-lambda-repformer.s3.amazonaws.com/dataset/dataset.tar.gz)
-- [Project Video](https://5ei74r0.github.io/contrastive-lambda-repformer.page/static/videos/summary.mp4)
+- [Project Video](https://youtu.be/Do3Ig3HqLN0)
 
 ## Abstract
 
