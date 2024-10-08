@@ -2,9 +2,9 @@
 
 - Accepted at CoRL 2024
 - [Project Page](https://5ei74r0.github.io/contrastive-lambda-repformer.page/)
-- arXiv
+- [arXiv](https://arxiv.org/abs/2410.00436)
 - [Dataset](https://contrastive-lambda-repformer.s3.amazonaws.com/dataset/dataset.tar.gz)
-- Project Video
+- [Project Video](https://youtu.be/Do3Ig3HqLN0)
 
 ## Abstract
 
@@ -20,12 +20,12 @@ We assume the following environment for our experiments:
 ### Clone & Install
 
 ```bash
-cd Contrastive_Lambda-Repformer
+cd contrastive-lambda-repformer
 ```
 
 ```bash
-pyenv virtualenv 3.8.10 contrastive_lambda-repformer
-pyenv local contrastive_lambda-repformer
+pyenv virtualenv 3.8.10 contrastive-lambda-repformer
+pyenv local contrastive-lambda-repformer
 pip install -r requirements.txt
 ```
 
