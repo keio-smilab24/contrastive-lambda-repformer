@@ -20,12 +20,12 @@ We assume the following environment for our experiments:
 ### Clone & Install
 
 ```bash
-cd Contrastive_Lambda-Repformer
+cd contrastive-lambda-repformer
 ```
 
 ```bash
-pyenv virtualenv 3.8.10 contrastive_lambda-repformer
-pyenv local contrastive_lambda-repformer
+pyenv virtualenv 3.8.10 contrastive-lambda-repformer
+pyenv local contrastive-lambda-repformer
 pip install -r requirements.txt
 ```
 
