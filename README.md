@@ -2,9 +2,9 @@
 
 - Accepted at CoRL 2024
 - [Project Page](https://5ei74r0.github.io/contrastive-lambda-repformer.page/)
-- arXiv
+- [arXiv](https://arxiv.org/abs/2410.00436)
 - [Dataset](https://contrastive-lambda-repformer.s3.amazonaws.com/dataset/dataset.tar.gz)
-- Project Video
+- [Project Video](https://5ei74r0.github.io/contrastive-lambda-repformer.page/static/videos/summary.mp4)
 
 ## Abstract
 
